@@ -1,5 +1,13 @@
 # Supporting Infrastructure for DataChain Compute Clusters on Azure
 
+## Setup
+
+1. Update `variables.tf` with values specific to your deployment.
+1. [Install Terraform](https://developer.hashicorp.com/terraform/install)
+1. Run `terraform init`
+1. Run `terraform apply`
+1. Run `terraform output` and copy the output values
+
 ## Overview
 
 ### 1. **Resource Group**
