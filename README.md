@@ -1,5 +1,7 @@
 # Supporting Infrastructure for DataChain Compute Clusters on Azure
 
+This repository contains the supporting infrastructure (OIDC, roles, resource group, etc.) needed to grant DataChain Studio enough permissions to manage compute clusters on Azure, and for those clusters to access the designated storage accounts.
+
 ## Setup
 
 1. Update `variables.tf` with values specific to your deployment.
