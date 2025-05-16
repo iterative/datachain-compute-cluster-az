@@ -35,21 +35,21 @@ resource "azurerm_resource_group" "datachain" {
   location = var.az_location
 }
 
-resource "azuread_application" "datachain_oidc_compute" {
-  display_name = "datachain-oidc-compute"
+# resource "azuread_application" "datachain_oidc_compute" {
+#   display_name = "datachain-oidc-compute"
+#
+#   api {
+#     requested_access_token_version = 2
+#   }
+# }
 
-  api {
-    requested_access_token_version = 2
-  }
-}
-
-resource "azuread_application" "datachain_oidc_storage" {
-  display_name = "datachain-oidc-storage"
-
-  api {
-    requested_access_token_version = 2
-  }
-}
+# resource "azuread_application" "datachain_oidc_storage" {
+#   display_name = "datachain-oidc-storage"
+#
+#   api {
+#     requested_access_token_version = 2
+#   }
+# }
 
 resource "azuread_service_principal" "datachain_oidc_compute" {
   client_id = azuread_application.datachain_oidc_compute.client_id
