@@ -74,7 +74,7 @@ resource "azuread_application_federated_identity_credential" "datachain_oidc_sto
   display_name   = azuread_application.datachain_oidc_storage.display_name
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://${var.oidc_provider}"
-  subject        = var.oidc_condition_compute
+  subject        = var.oidc_condition_storage
 }
 
 resource "azurerm_role_definition" "datachain_oidc_compute" {
