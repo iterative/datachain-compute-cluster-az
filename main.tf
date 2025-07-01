@@ -30,6 +30,13 @@ data "azurerm_storage_account" "datachain_oidc_storage" {
   name                = each.value
 }
 
+data "azurerm_key_vault" "datachain_oidc_storage" {
+  for_each = var.secret_stores
+
+  name                = each.value
+  resource_group_name = each.key
+}
+
 resource "azurerm_resource_group" "datachain" {
   name     = "datachain"
   location = var.az_location
@@ -121,7 +128,7 @@ resource "azurerm_role_assignment" "datachain_oidc_compute" {
   principal_id       = azuread_service_principal.datachain_oidc_compute.object_id
 }
 
-resource "azurerm_role_assignment" "oidc_storage_assignments" {
+resource "azurerm_role_assignment" "oidc_storage_buckets_assignments" {
   for_each = { 
     for storage_account in data.azurerm_storage_account.datachain_oidc_storage :
     storage_account.name => storage_account.id
@@ -130,4 +137,12 @@ resource "azurerm_role_assignment" "oidc_storage_assignments" {
   scope              = each.value
   role_definition_id = azurerm_role_definition.datachain_oidc_storage.role_definition_resource_id
   principal_id       = azuread_service_principal.datachain_oidc_storage.object_id
+}
+
+resource "azurerm_role_assignment" "oidc_storage_secrets_assignments" {
+  for_each = data.azurerm_key_vault.datachain_oidc_storage
+
+  scope                = each.value.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azuread_service_principal.datachain_oidc_storage.object_id
 }
