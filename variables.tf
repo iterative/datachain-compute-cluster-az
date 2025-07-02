@@ -23,3 +23,9 @@ variable "storage_buckets" {
     "example-resource-group" = "examplestorageaccount"
   }
 }
+
+variable "secret_stores" {
+  default = {
+    "example-resource-group" = "example-key-vault"
+  }
+}
