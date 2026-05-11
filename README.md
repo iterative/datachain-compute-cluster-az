@@ -1,4 +1,4 @@
-# Supporting Infrastructure for DataChain Compute Clusters on Azure
+# Supporting infrastructure for DataChain Compute Clusters on Azure
 
 This repository contains the supporting infrastructure (OIDC, roles, resource group, etc.) needed to grant DataChain Studio enough permissions to manage compute clusters on Azure, and for those clusters to access the designated storage accounts.
 
@@ -28,7 +28,6 @@ This repository contains the supporting infrastructure (OIDC, roles, resource gr
 - **Custom Role: Compute (`azurerm_role_definition.datachain_oidc_compute`)**:
   - Grants permissions to manage AKS clusters and assign managed identities within the resource group.
   - Assigned to the `datachain_oidc_compute` service principal on the resource group scope.
-
 - **Custom Role: Storage (`azurerm_role_definition.datachain_oidc_storage`)**:
   - Grants permissions to read/write/delete storage accounts and containers.
   - Assigned to the `datachain_oidc_storage` service principal on each authorized storage account.
@@ -39,50 +38,75 @@ This repository contains the supporting infrastructure (OIDC, roles, resource gr
 
 ## Security Considerations
 
-1. **Least Privilege Access**:
-   - Custom role definitions limit actions to only those required for compute and storage operations.
+1. **Least Privilege Access**: Custom role definitions limit actions to only those required for compute and storage operations.
 
-2. **OIDC-based Federation**:
-   - Federated identity credentials eliminate the need for long-lived secrets, enabling secure and auditable access from DataChain Studio.
+2. **OIDC-based Federation**: Federated identity credentials eliminate the need for long-lived secrets, enabling secure and auditable access from DataChain Studio.
 
-3. **Scoped Role Assignments**:
-   - Storage permissions are granted only to explicitly defined accounts.
-   - Compute permissions are limited to a single resource group.
+3. **Scoped Role Assignments**: Storage permissions are granted only to explicitly defined accounts. Compute permissions are limited to a single resource group.
 
-4. **AKS Resource Group Boundaries**:
-   - Permissions for the compute role are restricted to a single Resource Group, under which the AKS Compute clusters are created.
-   - AKS will automatically create additional resource groups prefixed with `MC_` to host internal infrastructure like virtual networks and managed node pools. 
+4. **AKS Resource Group Boundaries**: Permissions for the compute role are restricted to a single Resource Group, under which the AKS Compute clusters are created. AKS will automatically create additional resource groups prefixed with `MC_` to host internal infrastructure like virtual networks and managed node pools.
 
 ## Variables
 
-| Name                    | Description                                       | Example                                  |
-|-------------------------|---------------------------------------------------|------------------------------------------|
-| `az_subscription_id`    | Azure subscription ID                             | `00000000-0000-0000-0000-000000000000`   |
-| `az_location`           | Azure region where resources will be deployed     | `"East US"`                              |
-| `oidc_provider`         | OIDC issuer URL (used in federated identity)      | `"studio.datachain.ai/api"`              |
-| `oidc_condition_compute`| OIDC subject string for compute role              | `"credentials:example-team/datachain-compute"` |
-| `oidc_condition_storage`| OIDC subject string for storage role              | `"credentials:example-team/datachain-storage"` |
-| `storage_buckets`       | Map of resource group names to storage account names | `{ "example-resource-group" = "examplestorageaccount" }` |
+| Name                     | Description                                          | Example                                                    |
+|--------------------------|------------------------------------------------------|------------------------------------------------------------|
+| `az_subscription_id`     | Azure subscription ID                                | `"00000000-0000-0000-0000-000000000000"`                   |
+| `az_location`            | Azure region where resources will be deployed        | `"East US"`                                                |
+| `oidc_provider`          | OIDC issuer URL (used in federated identity)         | `"studio.datachain.ai/api"`                                |
+| `oidc_condition_compute` | OIDC subject string for compute role                 | `"credentials:example-team/datachain-compute"`             |
+| `oidc_condition_storage` | OIDC subject string for storage role                 | `"credentials:example-team/datachain-storage"`             |
+| `storage_buckets`        | Map of resource group names to storage account names | `{ "example-resource-group" = "examplestorageaccount" }`   |
+| `secret_stores`          | Map of resource group names to Key Vault names       | `{ "example-resource-group" = "example-key-vault" }`       |
 
 ## Outputs
 
-| Name                                     | Description                                             |
-|------------------------------------------|---------------------------------------------------------|
-| `datachain_compute_azure_subscription_id`| Subscription ID used for compute                        |
-| `datachain_compute_azure_tenant_id`      | Azure tenant ID for compute resources                   |
-| `datachain_compute_azure_client_id`      | Client ID of the compute Azure AD application           |
-| `datachain_storage_azure_subscription_id`| Subscription ID used for storage                        |
-| `datachain_storage_azure_tenant_id`      | Azure tenant ID for storage resources                   |
-| `datachain_storage_azure_client_id`      | Client ID of the storage Azure AD application           |
-| `datachain_compute_resource_group`       | Name of the resource group used for AKS and compute     |
+| Name                                      | Description                                                    |
+|-------------------------------------------|----------------------------------------------------------------|
+| `datachain_compute_azure_subscription_id` | Subscription ID used for compute                               |
+| `datachain_compute_azure_tenant_id`       | Azure tenant ID for compute resources                          |
+| `datachain_compute_azure_client_id`       | Client ID of the compute Azure AD application                  |
+| `datachain_storage_azure_subscription_id` | Subscription ID used for storage                               |
+| `datachain_storage_azure_tenant_id`       | Azure tenant ID for storage resources                          |
+| `datachain_storage_azure_client_id`       | Client ID of the storage Azure AD application                  |
+| `datachain_compute_resource_group`        | Name of the resource group used for AKS and compute            |
 
-## Architecture Overview for DataChain Compute Clusters
+## Architecture
 
 ![architecture](diagram.jpg)
 
-DataChain Studio operates in two main components:
+DataChain Studio is split into 2 main components:
 
-- **Control Plane** — typically hosted and managed by DataChain as a SaaS platform.
-- **Compute & Data Plane** — deployed within your Azure subscription, including:
-  - Kubernetes clusters (e.g., AKS) provisioned through OIDC-authenticated access.
-  - Blob storage accounts accessed securely using fine-grained roles and federated identities.
+- Control Plane — typically hosted by us as a fully managed service
+- Compute & Data Plane — typically hosted on your cloud accounts
+
+Compute resources will be provisioned through managed Kubernetes clusters we automatically deploy on your account, using the permissions described in this repository.
+
+## Guidance
+
+### Granting Access to Azure Storage Accounts in DataChain Studio Jobs
+
+Update the `storage_buckets` map in `variables.tf` with the resource groups and storage account names DataChain Studio Jobs should have access to, and run `terraform apply`.
+
+### Granting Access to Azure Key Vault Secrets in DataChain Studio Jobs
+
+You can securely inject sensitive configuration (such as tokens, passwords, or private URLs) into your compute jobs by referencing Azure Key Vault secrets through environment variables. This avoids hardcoding credentials and allows fine-grained secret management.
+
+1. **Create a Secret in Azure Key Vault**
+
+   Store your secret value under a named key in an existing Key Vault.
+
+2. **Grant Access to the Key Vault through Terraform**
+
+   Update the `secret_stores` map in `variables.tf` with the resource group and name of the Key Vault, and run `terraform apply`. This grants the storage service principal the `Key Vault Secrets User` role on the vault.
+
+3. **Set an Environment Variable in the Studio Job Settings**
+
+   In DataChain Studio, configure your job with an environment variable that references the secret using the `azsecret://` syntax:
+
+   ```
+   EXAMPLE_SECRET=azsecret://example-key-vault.vault.azure.net/secrets/example-secret#EXAMPLE_SECRET
+   ```
+
+   - Replace `example-key-vault.vault.azure.net` with the hostname of your Key Vault.
+   - Replace `example-secret` with the name of the secret inside the vault.
+   - The part after the `#` (e.g., `#EXAMPLE_SECRET`) refers to the key in your JSON secret payload (omit it if the secret is a plain string).
